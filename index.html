@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma de Simulação - LAIFT</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* SETUP E ESTÉTICA DARK THEME */
+        :root {
+            --bg-dark: #020617;
+            --panel-bg: #0f172a;
+            --neon-green: #deff9a;
+            --text-light: #f8fafc;
+            --flame-intensity: 1;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Urbanist', sans-serif; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+            position: relative; /* Necessário para a marca d'água */
+        }
+
+        header { text-align: center; margin-bottom: 2rem; }
+        header h1 { font-size: 2.5rem; color: var(--neon-green); font-weight: 800; text-transform: uppercase; letter-spacing: 2px;}
+        header p { color: #94a3b8; font-size: 1.1rem; letter-spacing: 1px; opacity: 0.8; }
+
+        .simulator-container {
+            background-color: var(--panel-bg);
+            border: 1px solid rgba(222, 255, 154, 0.2);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 1100px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            margin-bottom: 30px; /* Espaço para não cobrir a assinatura */
+        }
+
+        /* NAVEGAÇÃO */
+        .tabs { display: flex; background: #020617; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .tab-btn {
+            flex: 1; padding: 1.2rem; cursor: pointer; border: none; background: none;
+            color: #64748b; font-size: 1rem; font-weight: 600; transition: 0.4s;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .tab-btn.active { color: var(--neon-green); background: rgba(222, 255, 154, 0.05); box-shadow: inset 0 -3px 0 var(--neon-green); }
+
+        .module { display: none; padding: 2.5rem; }
+        .module.active { display: block; }
+
+        .sim-layout { display: grid; grid-template-columns: 350px 1fr; gap: 3rem; align-items: start; }
+        @media (max-width: 800px) { .sim-layout { grid-template-columns: 1fr; } }
+
+        /* CONTROLES */
+        .controls { display: flex; flex-direction: column; gap: 1.2rem; }
+        .controls label { font-size: 0.9rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 2px; display: block; }
+        
+        .controls select {
+            width: 100%; padding: 0.9rem; border-radius: 12px; border: 1px solid #334155;
+            background-color: #020617; color: white; font-size: 1rem; outline: none; transition: 0.3s;
+        }
+        .controls select optgroup { background-color: #1e293b; color: var(--neon-green); font-weight: bold; }
+        .controls select:focus { border-color: var(--neon-green); box-shadow: 0 0 0 2px rgba(222, 255, 154, 0.2); }
+
+        .intensity-control { background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 12px; border: 1px solid #334155; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--neon-green); margin-top: 10px; }
+
+        .btn-group { display: flex; gap: 12px; margin-top: 5px; }
+        .action-btn {
+            flex: 1; padding: 1rem; border: none; border-radius: 12px; font-weight: 800; cursor: pointer;
+            text-transform: uppercase; transition: 0.3s; font-size: 0.9rem;
+        }
+        .action-btn.primary { background-color: var(--neon-green); color: #020617; }
+        .action-btn.danger { background-color: #ef4444; color: white; }
+        .action-btn.off { background-color: #334155; color: white; }
+        .action-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+        /* --- CENÁRIO VISUAL GERAL --- */
+        .visual-area {
+            background: #000; border-radius: 16px; height: 500px; width: 100%;
+            position: relative; overflow: hidden; display: flex; flex-direction: column;
+            justify-content: flex-end; border: 1px solid #334155; transition: background-color 0.3s;
+        }
+
+        .workbench {
+            width: 100%; height: 100px; background: linear-gradient(180deg, #1e293b 0%, #020617 100%);
+            border-top: 6px solid #334155; position: relative; z-index: 10;
+        }
+
+        /* ANIMAÇÃO DE EXPLOSÃO (TREMOR E FLASH) */
+        @keyframes explode-shake {
+            0% { transform: translate(3px, 2px) rotate(0deg); }
+            20% { transform: translate(-3px, -2px) rotate(-1deg); }
+            40% { transform: translate(-3px, 2px) rotate(1deg); }
+            60% { transform: translate(3px, -2px) rotate(0deg); }
+            80% { transform: translate(2px, 2px) rotate(-1deg); }
+            100% { transform: translate(-2px, -2px) rotate(1deg); }
+        }
+        .explode-fx { animation: explode-shake 0.3s infinite; background-color: rgba(255, 50, 50, 0.4) !important; }
+
+        /* --- MÓDULO 1: VIDRARIAS (REAÇÕES) --- */
+        .glassware-viewport { height: 100%; width: 100%; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 20px; position: relative; z-index: 5;}
+        
+        .glass {
+            border: 4px solid rgba(255,255,255,0.2); border-top: none; 
+            background: rgba(255,255,255,0.03); position: relative; transition: all 0.5s ease;
+            box-shadow: inset -5px -5px 15px rgba(255,255,255,0.1);
+        }
+        
+        /* Formato Tubo de Ensaio */
+        .tube { width: 70px; height: 250px; border-radius: 0 0 35px 35px; }
+        
+        /* Formato Béquer */
+        .beaker { width: 160px; height: 180px; border-radius: 0 0 15px 15px; }
+        .beaker::before {
+            content: ''; position: absolute; top: -5px; left: -10px;
+            width: 15px; height: 20px; border-left: 4px solid rgba(255,255,255,0.2);
+            border-bottom: 4px solid transparent; transform: skewY(-45deg);
+        }
+        
+        .liquid-fill {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 20%; 
+            background-color: rgba(255,255,255,0.1); transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); 
+            border-radius: inherit;
+        }
+        .particles {
+            position: absolute; width: 100%; height: 100%; background-image: radial-gradient(rgba(0,0,0,0.4) 1px, transparent 1px);
+            background-size: 8px 8px; opacity: 0; transition: opacity 1s; border-radius: inherit;
+        }
+
+        /* Animação de Vapor */
+        .vapor-cloud {
+            position: absolute; bottom: 50%; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(200,255,200,0.5) 0%, transparent 60%);
+            opacity: 0; pointer-events: none; z-index: 3; transform-origin: bottom center;
+        }
+        @keyframes vapor-rise { 
+            0% { transform: translateY(0) scale(1); opacity: 0.8; } 
+            100% { transform: translateY(-200px) scale(3); opacity: 0; } 
+        }
+        .vapor-active { animation: vapor-rise 1.5s infinite linear; }
+
+        /* --- MÓDULO 2: CADINHO E CHAMAS --- */
+        .lab-setup { position: absolute; bottom: 80px; width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 5; }
+        .crucible {
+            width: 140px; height: 70px; background: #f8fafc; border: 3px solid #cbd5e1;
+            border-radius: 8px 8px 70px 70px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            display: flex; justify-content: center;
+        }
+        .crucible-inner {
+            width: 80%; height: 20px; background: #0f172a; border-radius: 50%;
+            position: absolute; top: 4px; overflow: visible;
+        }
+
+        /* Material físico no cadinho */
+        .material-deposit {
+            position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 60px; height: 25px; border-radius: 50% 50% 10% 10%;
+            background: transparent; transition: all 0.5s ease;
+            box-shadow: inset 0 -5px 10px rgba(0,0,0,0.5); opacity: 0;
+        }
+
+        /* Haste de Ignição */
+        .wand-igniter {
+            width: 250px; height: 10px; background: linear-gradient(90deg, #3e2723, #795548);
+            border-radius: 5px; position: absolute; top: 100px; right: -300px;
+            transform: rotate(-25deg); box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+            z-index: 20; transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .wand-igniter.active { right: 400px; top: 320px; transform: rotate(-40deg); }
+
+        /* A Mega Chama */
+        .mega-flame {
+            position: absolute; bottom: 40px; width: 120px; height: 220px;
+            background: transparent; border-radius: 50% 50% 20% 20%;
+            filter: blur(4px); opacity: 0; transform-origin: bottom center;
+            transform: scale(var(--flame-intensity)); transition: opacity 0.6s ease, transform 0.2s ease;
+            z-index: 4;
+        }
+
+        @keyframes flame-roar {
+            0% { transform: scale(var(--flame-intensity)) translateY(0px) rotate(1deg); filter: blur(4px); }
+            50% { transform: scale(calc(var(--flame-intensity) * 1.08)) translateY(-8px) rotate(-1deg); filter: blur(6px); }
+            100% { transform: scale(var(--flame-intensity)) translateY(2px) rotate(0.5deg); filter: blur(4px); }
+        }
+        .mega-flame.burning { animation: flame-roar 0.12s infinite alternate; opacity: 1; }
+
+        /* DIÁRIO DE BORDO */
+        .logbook {
+            margin-top: 1.5rem; padding: 1.5rem; background: #000; border-left: 5px solid var(--neon-green);
+            border-radius: 8px; font-size: 1rem; color: #94a3b8; line-height: 1.6; min-height: 100px; display: flex; align-items: center;
+        }
+
+        /* --- MARCA D'ÁGUA DO CRIADOR (SUBTIL) --- */
+        .creator-mark {
+            position: fixed;
+            bottom: 10px;
+            right: 15px;
+            font-size: 11px;
+            color: #334155; /* Cinza escuro, baixo contraste contra o fundo */
+            opacity: 0.6;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+            z-index: 1000; /* Garante que fique por cima de tudo */
+            pointer-events: none; /* Não interfere nos cliques do site */
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Laboratório Virtual LAIFT</h1>
+        <p>Plataforma de Simulação</p>
+    </header>
+
+    <div class="simulator-container">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('reacoes')">Mesa de Reações</button>
+            <button class="tab-btn" onclick="switchTab('fogo')">Espectroscopia de Chama</button>
+        </div>
+
+        <div id="reacoes" class="module active">
+            <div class="sim-layout">
+                <div class="controls">
+                    <div>
+                        <label>1. Escolha a Vidraria</label>
+                        <select id="vidraria" onchange="mudarVidro()">
+                            <option value="tube">Tubo de Ensaio (15 mL)</option>
+                            <option value="beaker">Béquer (100 mL)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label>2. Cátion Metálico (Amostra Inicial)</label>
+                        <select id="amostra">
+                            <option value="none">-- Selecionar Substância --</option>
+                            <optgroup label="Reativos (Alto Risco)">
+                                <option value="na_metal">Sódio Metálico (Na)</option>
+                                <option value="h2o2">Peróxido de Hidrogênio (H₂O₂)</option>
+                                <option value="al">Limalha de Alumínio (Al)</option>
+                            </optgroup>
+                            <optgroup label="Metais Pesados e Transição">
+                                <option value="pb">Chumbo (Pb²⁺)</option>
+                                <option value="ag">Prata (Ag⁺)</option>
+                                <option value="cd">Cádmio (Cd²⁺)</option>
+                                <option value="sb">Antimônio (Sb³⁺)</option>
+                                <option value="cu">Cobre (Cu²⁺)</option>
+                                <option value="fe">Ferro (Fe³⁺)</option>
+                                <option value="zn">Zinco (Zn²⁺)</option>
+                                <option value="ni">Níquel (Ni²⁺)</option>
+                            </optgroup>
+                            <optgroup label="Alcalino-Terrosos">
+                                <option value="ca">Cálcio (Ca²⁺)</option>
+                                <option value="ba">Bário (Ba²⁺)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label>3. Agente Reagente (Adição)</label>
+                        <select id="reagente">
+                            <option value="none">-- Selecionar Reagente --</option>
+                            <optgroup label="Solventes e Ácidos">
+                                <option value="h2o">Água Destilada (H₂O)</option>
+                                <option value="hcl">Ácido Clorídrico (HCl)</option>
+                                <option value="h2so4">Ácido Sulfúrico (H₂SO₄)</option>
+                            </optgroup>
+                            <optgroup label="Halogenetos e Sulfetos">
+                                <option value="ki">Iodeto de Potássio (KI)</option>
+                                <option value="h2s">Gás Sulfídrico (H₂S)</option>
+                                <option value="nh42s">Sulfeto de Amônio (NH₄)₂S)</option>
+                            </optgroup>
+                            <optgroup label="Bases e Carbonatos">
+                                <option value="naoh">Hidróxido de Sódio (NaOH)</option>
+                                <option value="nh3">Amônia Aquosa (NH₃)</option>
+                                <option value="na2co3">Carbonato de Sódio (Na₂CO₃)</option>
+                                <option value="nh42co3">Carbonato de Amônio (NH₄)₂CO₃)</option>
+                                <option value="naclo">Água Sanitária (NaClO)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <button class="action-btn primary" onclick="reagir()">Executar Mistura</button>
+                </div>
+                
+                <div class="visual-area" id="area-reacao">
+                    <div class="glassware-viewport">
+                        <div id="vidro" class="glass tube">
+                            <div id="vapor-efeito" class="vapor-cloud"></div>
+                            <div id="liquido" class="liquid-fill">
+                                <div id="particulas" class="particles"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="workbench"></div>
+                </div>
+            </div>
+            <div class="logbook" id="log-reacao">Bancada LAIFT operacional. Selecione a vidraria e combine os reagentes para análise.</div>
+        </div>
+
+        <div id="fogo" class="module">
+            <div class="sim-layout">
+                <div class="controls">
+                    <div>
+                        <label>Produto Químico no Cadinho</label>
+                        <select id="sal" onchange="carregarMaterial()">
+                            <option value="none">-- Selecionar Produto Químico --</option>
+                            <option value="cu">Sulfato de Cobre</option>
+                            <option value="sr">Cloreto de Estrôncio</option>
+                            <option value="na">Cloreto de Sódio</option>
+                            <option value="k">Cloreto de Potássio</option>
+                            <option value="mg">Fita de Magnésio</option>
+                            <option value="li">Cloreto de Lítio</option>
+                            <option value="ca">Cloreto de Cálcio</option>
+                            <option value="ba">Cloreto de Bário</option>
+                            <option value="b">Ácido Bórico (Boro)</option>
+                            <option value="pb">Nitrato de Chumbo</option>
+                        </select>
+                    </div>
+
+                    <div class="intensity-control">
+                        <label>Intensidade da Combustão</label>
+                        <input type="range" id="potencia" min="0.6" max="3.5" step="0.1" value="1" oninput="mudarPotencia()">
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="action-btn danger" onclick="ignicao()">🔥 Iniciar Ignição</button>
+                        <button class="action-btn off" onclick="abafar()">Abafar Fogo</button>
+                    </div>
+                </div>
+                
+                <div class="visual-area">
+                    <div class="wand-igniter" id="haste"></div>
+                    <div class="lab-setup">
+                        <div class="mega-flame" id="fogo-grande"></div>
+                        <div class="crucible">
+                            <div class="crucible-inner">
+                                <div class="material-deposit" id="material"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="workbench"></div>
+                </div>
+            </div>
+            <div class="logbook" id="log-fogo">Cadinho pronto. Deposite o produto químico e inicie a ignição para descobrir sua cor de chama.</div>
+        </div>
+    </div>
+
+    <div class="creator-mark">DPF:)</div>
+
+    <script>
+        // --- NAVEGAÇÃO ---
+        function switchTab(id) {
+            document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.target.classList.add('active');
+            abafar(); // Apaga o fogo ao sair da aba
+        }
+
+        // --- MÓDULO 1: REAÇÕES ---
+        function mudarVidro() {
+            const v = document.getElementById('vidraria').value;
+            document.getElementById('vidro').className = `glass ${v}`;
+        }
+
+        // Matriz Completa de Reações Químicas
+        const matrizReacoes = {
+            // Reações Extremas (Explosão/Vapor)
+            'na_metal': { 'h2o': { t: 'ex', c: 'rgba(255, 150, 0, 0.9)', m: 'KABOOM! Sódio reage violentamente com água liberando gás Hidrogênio e calor explosivo.' }, 'hcl': { t: 'ex', c: 'rgba(255, 50, 50, 0.9)', m: 'EXPLOSÃO CRÍTICA! Reação ácido-metal detona o Hidrogênio instantaneamente.' }, 'h2so4': { t: 'ex', c: 'rgba(255, 20, 20, 0.9)', m: 'DETONAÇÃO! Sódio em ácido sulfúrico causa explosão catastrófica.' } },
+            'al': { 'hcl': { t: 'vap', c: 'rgba(150, 150, 150, 0.6)', m: 'EBULIÇÃO VIGOROSA! Alumínio corrói no ácido liberando gás Hidrogênio (H₂).' }, 'naoh': { t: 'vap', c: 'rgba(200, 200, 200, 0.5)', m: 'REAÇÃO FORTE! Alumínio em base forte dissolve liberando calor e muito gás.' } },
+            'h2o2': { 'ki': { t: 'vap', c: 'rgba(255, 255, 200, 0.8)', m: 'VAPORIZAÇÃO EXTREMA! (Pasta de Dente de Elefante). O Iodeto catalisa a decomposição rápida em Água e muito Oxigênio (O₂).' } },
+            
+            // Metais e Precipitados
+            'pb': { 'ki': { t: 'ppt', c: '#ffd700', m: 'Precipitado Amarelo Brilhante. Formação de Iodeto de Chumbo (PbI₂).' }, 'hcl': { t: 'ppt', c: '#ffffff', m: 'Precipitado Branco Leitoso. Cloreto de Chumbo precipita a frio.' }, 'h2s': { t: 'ppt', c: '#141414', m: 'Precipitado Preto intenso. Sulfeto de Chumbo.' }, 'nh42s': { t: 'ppt', c: '#141414', m: 'Precipitado Preto (Sulfeto de Chumbo).' }, 'h2so4': { t: 'ppt', c: '#f0f0f0', m: 'Precipitado Branco pesado. Sulfato de Chumbo insolúvel.' } },
+            'ag': { 'hcl': { t: 'ppt', c: '#f0f0f0', m: 'Precipitado Branco (queijo coalho). Cloreto de Prata (AgCl), fotossensível.' }, 'ki': { t: 'ppt', c: '#ffffe0', m: 'Precipitado Amarelo pálido. Iodeto de Prata.' }, 'h2s': { t: 'ppt', c: '#0a0a0a', m: 'Precipitado Preto (Sulfeto de Prata).' }, 'nh3': { t: 'dil', c: 'rgba(255,255,255,0.05)', m: 'Diluição límpida. A prata forma um complexo diamínico solúvel invisível [Ag(NH₃)₂]⁺.' } },
+            'cd': { 'h2s': { t: 'ppt', c: '#ffcc00', m: 'ALERTA: Precipitado Amarelo Intenso. Sulfeto de Cádmio, composto altamente tóxico.' }, 'nh42s': { t: 'ppt', c: '#ffcc00', m: 'Precipitado Amarelo Intenso (Sulfeto de Cádmio).' } },
+            'sb': { 'h2s': { t: 'ppt', c: '#ff8c00', m: 'ALERTA: Precipitado Laranja Vibrante. O exótico Sulfeto de Antimônio surgiu na vidraria.' }, 'nh42s': { t: 'ppt', c: '#ff8c00', m: 'Precipitado Laranja Vibrante (Sulfeto de Antimônio).' } },
+            'cu': { 'naoh': { t: 'ppt', c: '#00ced1', m: 'Precipitado Azul Turquesa gelatinoso. Hidróxido de Cobre(II).' }, 'nh3': { t: 'dil', c: '#00008b', m: 'Cores Incríveis! A Amônia forma um complexo Azul Royal solúvel com o Cobre.' }, 'h2s': { t: 'ppt', c: '#0a0a0a', m: 'Precipitado Preto (Sulfeto de Cobre).' } },
+            'fe': { 'naoh': { t: 'ppt', c: '#d2691e', m: 'Precipitado Marrom/Ferrugem. Hidróxido de Ferro(III).' }, 'nh3': { t: 'ppt', c: '#d2691e', m: 'Precipitado Marrom/Ferrugem. Hidróxido de Ferro(III) formado com amônia.' }, 'nh42s': { t: 'ppt', c: '#141414', m: 'Precipitado Preto (Sulfeto de Ferro).' } },
+            'zn': { 'h2s': { t: 'ppt', c: '#f0f0f0', m: 'Precipitado Branco gelatinoso. O Zinco é o único metal de transição que forma sulfeto branco.' }, 'nh42s': { t: 'ppt', c: '#f0f0f0', m: 'Precipitado Branco gelatinoso (Sulfeto de Zinco).' }, 'naoh': { t: 'dil', c: 'rgba(255,255,255,0.1)', m: 'Diluição. O hidróxido de zinco dissolve-se no excesso de soda.' } },
+            'ni': { 'naoh': { t: 'ppt', c: '#32cd32', m: 'Precipitado Verde Claro característico. Hidróxido de Níquel.' }, 'nh3': { t: 'dil', c: '#8a2be2', m: 'Complexo formado! Níquel em amônia gera solução Azul-Violeta solúvel.' }, 'nh42s': { t: 'ppt', c: '#0f0f0f', m: 'Precipitado Preto (Sulfeto de Níquel).' } },
+            'ca': { 'na2co3': { t: 'ppt', c: '#ffffff', m: 'Precipitado Branco Opaco. Carbonato de Cálcio (Giz).' }, 'nh42co3': { t: 'ppt', c: '#ffffff', m: 'Precipitado Branco Opaco (Carbonato de Cálcio).' }, 'h2so4': { t: 'ppt', c: '#f0f0f0', m: 'Precipitado Branco (Sulfato de Cálcio).' } },
+            'ba': { 'h2so4': { t: 'ppt', c: '#fafafa', m: 'Precipitado Branco muito pesado. Sulfato de Bário (Barita) totalmente insolúvel.' }, 'na2co3': { t: 'ppt', c: '#f5f5f5', m: 'Precipitado Branco (Carbonato de Bário). Substância tóxica.' } }
+        };
+
+        function reagir() {
+            const amostra = document.getElementById('amostra').value;
+            const reagente = document.getElementById('reagente').value;
+            
+            const liq = document.getElementById('liquido');
+            const part = document.getElementById('particulas');
+            const vap = document.getElementById('vapor-efeito');
+            const area = document.getElementById('area-reacao');
+            const log = document.getElementById('log-reacao');
+
+            // Reset
+            liq.style.height = '30%';
+            liq.style.backgroundColor = 'rgba(255,255,255,0.1)';
+            part.style.opacity = '0';
+            vap.classList.remove('active');
+            area.classList.remove('explode-fx');
+
+            if(amostra === 'none' || reagente === 'none') {
+                log.innerHTML = `<strong style="color:#ef4444">Erro Operacional:</strong> Selecione o Cátion e o Reagente.`;
+                liq.style.height = '15%';
+                return;
+            }
+
+            // Exceção Universal Tóxica: Água Sanitária + Ácido/Amônia
+            if(reagente === 'naclo' && (amostra === 'hcl' || amostra === 'h2so4')) {
+                setTimeout(() => {
+                    liq.style.height = '50%';
+                    vap.classList.add('active');
+                    vap.style.background = `radial-gradient(circle, rgba(200,255,50,0.6) 0%, transparent 60%)`;
+                    log.innerHTML = `<strong style="color:var(--neon-green)">ALERTA MÁXIMO:</strong> Mistura de Ácido com Água Sanitária gerou GÁS CLORO (Cl₂) amarelo-esverdeado altamente tóxico!`;
+                }, 600);
+                return;
+            }
+            if(reagente === 'naclo' && amostra === 'nh3') {
+                setTimeout(() => {
+                    liq.style.height = '50%';
+                    vap.classList.add('active');
+                    vap.style.background = `radial-gradient(circle, rgba(255,255,255,0.5) 0%, transparent 60%)`;
+                    log.innerHTML = `<strong style="color:var(--neon-green)">ALERTA MÁXIMO:</strong> Mistura de Amônia com Água Sanitária gerou GÁS CLORAMINA asfixiante!`;
+                }, 600);
+                return;
+            }
+
+            setTimeout(() => {
+                let tipo = 'dil';
+                let cor = 'rgba(255,255,255,0.1)';
+                let msg = "Diluição efetuada. Nenhuma reação química visível ocorreu.";
+
+                if(matrizReacoes[amostra] && matrizReacoes[amostra][reagente]) {
+                    const r = matrizReacoes[amostra][reagente];
+                    tipo = r.t; cor = r.c; msg = r.m;
+                }
+
+                liq.style.height = '80%';
+                liq.style.backgroundColor = cor;
+
+                if(tipo === 'ppt') {
+                    part.style.opacity = '1';
+                } else if(tipo === 'vap') {
+                    vap.classList.add('active');
+                    vap.style.background = `radial-gradient(circle, ${cor} 0%, transparent 60%)`;
+                } else if(tipo === 'ex') {
+                    area.classList.add('explode-fx');
+                    liq.style.height = '100%'; 
+                    setTimeout(() => { area.classList.remove('explode-fx'); }, 1200);
+                }
+
+                log.innerHTML = `<strong style="color:var(--neon-green)">Análise LAIFT:</strong> ${msg}`;
+            }, 600);
+        }
+
+        // --- MÓDULO 2: MATERIAL E FOGO ---
+        const propriedadesChama = {
+            'cu': { cor: '#00ff00', brilho: '0 0 50px 20px #00ff00, 0 0 100px #00ff00', mat: 'radial-gradient(circle, #2e8b57, #004d40)', nome: 'Verde Esmeralda' },
+            'sr': { cor: '#ff0000', brilho: '0 0 50px 20px #ff0000, 0 0 100px #ff0000', mat: 'radial-gradient(circle, #ffffff, #f5f5f5)', nome: 'Vermelho Carmesim' },
+            'k':  { cor: '#ee82ee', brilho: '0 0 40px 15px #ee82ee, 0 0 80px #ee82ee', mat: 'radial-gradient(circle, #f8f8ff, #e6e6fa)', nome: 'Violeta / Lilás' },
+            'mg': { cor: '#ffffff', brilho: 'inset -10px -10px 40px #fff, 0 0 80px #fff, 0 0 150px #fff', mat: 'linear-gradient(90deg, #b0c4de, #fff, #b0c4de)', nome: 'Branco Ofuscante' },
+            'li': { cor: '#ff1493', brilho: '0 0 50px 20px #ff1493, 0 0 100px #ff1493', mat: 'radial-gradient(circle, #fdfdfd, #dcdcdc)', nome: 'Rosa / Magenta' },
+            'na': { cor: '#ffa500', brilho: '0 0 50px 20px #ffa500, 0 0 100px #ffa500', mat: 'radial-gradient(circle, #fff, #eee)', nome: 'Laranja Solar' },
+            'ca': { cor: '#ff4500', brilho: '0 0 50px 20px #ff4500, 0 0 100px #ff4500', mat: 'radial-gradient(circle, #fffafa, #f5f5f5)', nome: 'Vermelho Tijolo' },
+            'ba': { cor: '#adff2f', brilho: '0 0 40px 15px #adff2f, 0 0 80px #adff2f', mat: 'radial-gradient(circle, #f5fffa, #e0eee0)', nome: 'Verde Amarelado' },
+            'b':  { cor: '#00ff7f', brilho: '0 0 60px 25px #00ff7f, 0 0 120px #00ff7f', mat: 'radial-gradient(circle, #f0fff0, #f5f5f5)', nome: 'Verde Brilhante' },
+            'pb': { cor: '#87ceeb', brilho: '0 0 40px 15px #87ceeb, 0 0 80px #87ceeb', mat: 'radial-gradient(circle, #f8f8ff, #e6e6fa)', nome: 'Azul Claro' }
+        };
+
+        function carregarMaterial() {
+            const s = document.getElementById('sal').value;
+            const mat = document.getElementById('material');
+            const log = document.getElementById('log-fogo');
+            abafar(); 
+
+            if(s !== 'none') {
+                mat.style.background = propriedadesChama[s].mat;
+                mat.style.opacity = "1";
+                if(s === 'mg') { mat.style.width = "40px"; mat.style.height = "8px"; mat.style.borderRadius = "2px"; } 
+                else { mat.style.width = "60px"; mat.style.height = "25px"; mat.style.borderRadius = "50% 50% 10% 10%"; }
+                log.innerHTML = `<strong style="color:var(--neon-green)">Sistema:</strong> Produto depositado no cadinho. Aguardando ignição.`;
+            } else {
+                mat.style.opacity = "0";
+            }
+        }
+
+        function mudarPotencia() {
+            const p = document.getElementById('potencia').value;
+            document.documentElement.style.setProperty('--flame-intensity', p);
+        }
+
+        function ignicao() {
+            const s = document.getElementById('sal').value;
+            const haste = document.getElementById('haste');
+            const fogo = document.getElementById('fogo-grande');
+            const log = document.getElementById('log-fogo');
+
+            if(s === 'none') {
+                log.innerHTML = `<strong style="color:#ef4444">Erro:</strong> Adicione um produto químico no cadinho primeiro.`;
+                return;
+            }
+
+            haste.classList.add('active'); // Anima a haste tocando o cadinho
+            
+            setTimeout(() => {
+                const prop = propriedadesChama[s];
+                fogo.style.background = `radial-gradient(circle at center, #fff 10%, ${prop.cor} 60%, transparent 85%)`;
+                fogo.style.boxShadow = prop.brilho;
+                fogo.classList.add('burning');
+                haste.classList.remove('active'); // Haste volta
+
+                let msg = `Espectro revelado: <strong style="color:${prop.cor}">${prop.nome}</strong>.`;
+                if(s === 'mg') msg = `ALERTA ÓPTICO: Combustão do magnésio gerando <strong style="color:#fff">Branco Ofuscante</strong> intenso.`;
+
+                log.innerHTML = `<strong style="color:#ef4444">Espectrômetro LAIFT:</strong> ${msg}`;
+            }, 800);
+        }
+
+        function abafar() {
+            const fogo = document.getElementById('fogo-grande');
+            const haste = document.getElementById('haste');
+            fogo.classList.remove('burning');
+            fogo.style.boxShadow = "none";
+            haste.classList.remove('active');
+        }
+    </script>
+</body>
+</html>
