@@ -22,7 +22,7 @@ O simulador foi criado como ferramenta preparatória para um laboratório presen
 
 ## 🚀 Como Acessar
 Acesse o laboratório virtual diretamente pelo seu navegador, sem necessidade de instalação:
-👉 **https://github.com/Diretoria-DPF/Laborat-rio-virtual/commit/34261bcbb1cc5ba160eea8c9639a5bf6ae2fad5f**
+👉 **[https://github.com/Diretoria-DPF/Laborat-rio-virtual/commit/34261bcbb1cc5ba160eea8c9639a5bf6ae2fad5f](https://diretoria-dpf.github.io/laboratorio-virtual/)**
 
 ---
 *Projeto desenvolvido para fins educacionais e de extensão acadêmica.*
