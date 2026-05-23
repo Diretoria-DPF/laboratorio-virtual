@@ -24,5 +24,7 @@ O simulador foi criado como ferramenta preparatória para um laboratório presen
 Acesse o laboratório virtual diretamente pelo seu navegador, sem necessidade de instalação:
 👉 **[https://github.com/Diretoria-DPF/Laborat-rio-virtual/commit/34261bcbb1cc5ba160eea8c9639a5bf6ae2fad5f](https://diretoria-dpf.github.io/laboratorio-virtual/)**
 
+🤖 Tecnologias O desenvolvimento deste projeto contou com o apoio de Inteligência Artificial para a estruturação lógica, refinamento da arquitetura do motor estequiométrico e otimização da interface de utilizador. A IA foi utilizada como uma ferramenta de co-criação, permitindo que a lógica complexa de reações químicas e a física de fluidos fossem implementadas com maior robustez e precisão algorítmica.
+
 ---
 *Projeto desenvolvido para fins educacionais e de extensão acadêmica.*
