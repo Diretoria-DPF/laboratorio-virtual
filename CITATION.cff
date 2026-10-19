@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "Se você usar este projeto, cite-o com os dados abaixo."
+type: software
+title: "Simulador Virtual LAIFT: Química do Cotidiano e Toxicologia"
+abstract: "Plataforma web interativa que simula reações químicas de alto risco, precipitações toxicológicas e espectroscopia de chama para ensino em saúde."
+authors:
+  - family-names: "Francisco"
+    given-names: "Daniel Pires"
+    affiliation: "UNINASSAU Salvador; LAIFT"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"  # descomente e preencha quando o ORCID existir
+repository-code: "https://github.com/Diretoria-DPF/laboratorio-virtual"
+url: "https://dpflabs.com"
+keywords:
+  - toxicologia
+  - quimica
+  - simulador
+  - educacao-em-saude
